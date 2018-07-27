@@ -101,19 +101,24 @@ makenotes() {
 		# $1 is a directory, following arguments are either also directories, or integers
 		# check whether there are ints
 
-		while [ ! $# -eq 0 ]
+		for i in "${@}"
 		do
-			case "$1" in
+			if [[ "$i" =~ +([0-9]) ]]
+			then
+				hasInts=true
+				break
+			fi
+			#case "$i" in
 				# a directory
-				+([^0-9]))
-					shift
-					;;
-				# an int
-				+([0-9]))
-					hasInts=true
-					break
-					;;
-			esac
+			#	+([^0-9]))
+			#		shift
+			#		;;
+			#	# an int
+			#	+([0-9]))
+			#		hasInts=true
+			#		break
+			#		;;
+			#esac
 		done
 		
 		while [ ! $# -eq 0 ]

@@ -67,11 +67,78 @@ Compiles all notes from the (SUB)DIRECTORY contained in $NOTES_DIR. Multiple dir
 		Optional space separated values
 	|
 		OR, used to specify mutually exclusive items.
-```
 
 #### Environment and Examples
 
+This script operates on a folder hierarchy with a single root folder in which you organize all your notes taken during for example class or work. I have a single "Notes" directory in which I have 3 subfolders called "Work", "Study" and "Personal". I further subdivided these folders to my liking.
 
+```
+Notes
+├─Personal
+│  ├─Diary
+│  │  └─2018
+│  │      └─July
+│  └─Projects
+│      ├─BWSort
+│      └─cNotes
+├─Study
+│  ├─Biomedical Science
+│  ├─Computer Science
+│  │  ├─Areas
+│  │  │  ├─Algorithms
+│  │  │  ├─Cryptography
+│  │  │  ├─Data Structures
+│  │  │  ├─Design patterns
+│  │  │  └─Networking
+│  │  ├─Technologies
+│  │  └─Tools
+│  └─Mathematics
+└─Work
+    └─Projects
+	├─Project1
+	├─Project2
+	├─Project3
+	└─Project4
+```
+
+If we want to compile all notes in our Notes folder, we can execute the following command:
+```
+notes all
+```
+This will generate a master pf inside the Notes folder.
+
+If we instead only want to compile the notes from our personal projects, we can execute the following command:
+```
+notes Personal Projects
+```
+This would give us Projects.pdf inside the Personal folder. (Bug: currently it also generates a master pdf inside the notes folder)
+
+If we have a folder like Work/Projects that contains a ton of folders ending in an integer, we can easily compile them by specifying a comma separated list or a range like so:
+```
+notes Work Projects 1,2,3,4
+```
+or
+```
+notes Work Projects 1-4
+```
+This will then generate a Projects.pdf file inside the Work folder.
+
+## Known Bugs
+
++) Currently an extra master pdf will be generated in case you do not supply an integer list with a specific path.
++) Paths are formed with both '\' and '/' which looks ugly but somehow seems to work.
+
+In case you find any bugs, feel free to let me know.
+
+## Towards the future
+
++) Support for suffixes of the folders currently ending in integers. This will be useful in case you want your folders to have names like "Project 1 - ProjectTitle" instead of just "Project1".
++) Support for piping of output from commands such as grep to notes, so you can more easily determine which notes you want to compile to a pdf format.
++) Support for other output formats such as .docx, and html.
++) Support for output customization (see fonts, latex engines,...)
++) More appropriate naming of "master.pdf"
++) Support for an absolute path besides a space separated list of directories.
++) Improvement of script logic, performance, less dependencies,... (whatever is possible!)
 
 ## License
 
