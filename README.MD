@@ -22,10 +22,14 @@ Install a Tex/LaTeX distribution such as <https://miktex.org/download> and follo
 setx PATH=%PATH%;Your/Path/To/The/Application/Directory/
 ```
 + on mac
+open up the /etc/paths file with your favourite text editor (in this case Vi) and add the necessary folder at the end
 ```
+sudo vi /etc/paths
 ```
 + on linux
+open up the /etc/environment file with your favourite text editor and add the necessary folder ata the end
 ```
+sudo vi /etc/environment
 ```
 Now place the script inside a directory that is part of your PATH variable, or add another directory following the previous instructions. Make the script executable by executing the following command:
 ```
@@ -125,19 +129,14 @@ This will then generate a Projects.pdf file inside the Work folder.
 
 ## Known Bugs
 
-<<<<<<< HEAD
 + Currently an extra master pdf will be generated in case you do not supply an integer list with a specific path.
 + Paths are formed with both '\' and '/' which looks ugly but somehow seems to work.
-=======
-+) Currently an extra master pdf will be generated in case you do not supply an integer list with a specific path.
-+) Paths are formed with both '\' and '/' which looks ugly but somehow seems to work.
->>>>>>> 2a7c0edc35f937c4a27b8d145c36c65df5ca10c2
++ Currently only works on windows since the gs64winc command is a windows specific command
 
 In case you find any bugs, feel free to let me know.
 
 ## Towards the future
 
-<<<<<<< HEAD
 + Support for suffixes of the folders currently ending in integers. This will be useful in case you want your folders to have names like "Project 1 - ProjectTitle" instead of just "Project1".
 + Support for piping of output from commands such as grep to notes, so you can more easily determine which notes you want to compile to a pdf format.
 + Support for other output formats such as .docx, and html.
@@ -145,15 +144,6 @@ In case you find any bugs, feel free to let me know.
 + More appropriate naming of "master.pdf"
 + Support for an absolute path besides a space separated list of directories.
 + Improvement of script logic, performance, less dependencies,... (whatever is possible!)
-=======
-+) Support for suffixes of the folders currently ending in integers. This will be useful in case you want your folders to have names like "Project 1 - ProjectTitle" instead of just "Project1".
-+) Support for piping of output from commands such as grep to notes, so you can more easily determine which notes you want to compile to a pdf format.
-+) Support for other output formats such as .docx, and html.
-+) Support for output customization (see fonts, latex engines,...)
-+) More appropriate naming of "master.pdf"
-+) Support for an absolute path besides a space separated list of directories.
-+) Improvement of script logic, performance, less dependencies,... (whatever is possible!)
->>>>>>> 2a7c0edc35f937c4a27b8d145c36c65df5ca10c2
 
 ## License
 
