@@ -7,12 +7,16 @@
 # enable extended pattern matching
 shopt -s extglob
 
-set -x
-trap read debug
+# DEBUGGING
+# set -x
+# trap read debug
+
 # only read commands (testing stage)
 # set -n
+
 # If an error occurs, exit script
 set -e
+
 # man page
 man() {
 	cat << EOF
@@ -63,6 +67,27 @@ getnotes() {
 # compiles a pdf from markdown to latex, with table of contents and provided font (not yet supported)
 makepdf() {
 	pandoc -f markdown -t latex --toc -o "${1}.pdf" $2 && echo "Created ${1}.pdf"
+}
+
+# ghostscript can combine pdfs
+gs() {
+	case "$1" in
+		gs)
+			shift
+			gs "$@"
+			;;
+		gswin32c)
+			shift
+			gswin32c "$@"
+			;;
+		gswin64c)
+			shift
+			gswin64c "$@"
+			;;
+		*)
+			exit 1
+			;;
+	esac
 }
 
 # takes *, path and int list, or directory list
@@ -167,7 +192,19 @@ makenotes() {
 	fi
 	# make master pdf
 	echo "Compiling master pdf..."
-	gswin64c -sDEVICE=pdfwrite -dQUIET -o "master.pdf" ${compiledFiles[@]}
+	
+	# <NOT WORKING
+	# gs+=(-sDevice=pdfwrite)
+	# gs+=(-dQUIET)
+	# gs+=(-o)
+	# gs+=(master.pdf)
+	# gs+=("${compiledFiles[@]}")
+	# execute gs
+	#"${gs[@]}"
+	# NOT WORKING>
+
+	gs "$gsname" '-sDEVICE=pdfwrite' '-dQUIET' '-o' 'master.pdf' "${compiledFiles[@]}"
+	# gswin64c -sDEVICE=pdfwrite -dQUIET -o "master.pdf" ${compiledFiles[@]}
 	cd - &>/dev/null
 }
 
@@ -333,6 +370,19 @@ cleanDirectories() {
 	done
 }
 
+createEnvironmentVariable() {
+	case "$1" in
+		setx)
+			setx "$2" "$3"
+			;;
+		export)
+			echo "$2"="$3" >> ~/.bashrc
+			;;
+		*)
+			;;
+		esac
+}
+
 main() {
 	arr_dir_name=$2[@]
 	arr_ints_name=$3[@]
@@ -373,6 +423,71 @@ directories=()
 integers=()
 compiledFiles=()
 
+# depending on the OS we need a different command for ghostscript
+# NOT WORKING
+# gs=()
+
+gsname=""
+createEnvironmentVariableCommandName=""
+case "$OSTYPE" in
+	darwin*)
+		echo "I am a mac"
+		# gs+=("gs")
+		gsname="gs"
+		createEnvironmentVariableCommandName="export"
+		;;
+	linux-gnu)
+		echo "I am a linux or windows 10"
+		if [[ "$(grep -qi Microsoft /proc/sys/kernel/osrelease 2> /dev/null)" =~ *Microsoft* ]]
+		then
+			if [ "$(uname -a)" == 'x86_64' ]
+			then
+				# gs+=("gswin64c")
+				gsname="gswin64c"
+			else
+				# gs+=("gswin32c")
+				gsname="gswin32c"
+			fi
+			createEnvironmentVariableCommandName="setx"
+		else
+			# gs+=("gs")
+			gsname="gs"
+			createEnvironmentVariableCommandName="export"
+		fi
+		;;
+	cygwin)
+		echo "I am windows using cygwin"
+		if [[ "$(uname -a)" =~ x86_64 ]]
+		then
+			# gs+=("gswin64c")
+			gsname="gswin64c"
+		else
+			# gs+=("gswin32c")
+			gsname="gswin32c"
+		fi
+		createEnvironmentVariableCommandName="setx"
+		;;
+	msys)
+		echo "I am windows using minimal shell"
+		if [[ "$(uname -a)" =~ x86_64 ]]
+		then
+			# gs+=("gswin64c")
+			gsname="gswin64c"
+		else
+			# gs+=("gswin32c")
+			gsname="gswin32c"
+		fi
+		createEnvironmentVariableCommandName="setx"
+		;;
+	*)
+		echo "I am something else..."
+		# try
+		# gs+=("gs")
+		gsname="gs"
+		createEnvironmentVariableCommandName="export"
+		;;
+esac
+
 # this doesn't work the way I want it to... I don't want people to be able to add man somewhere in the middle of a command and have it show the man page... I want it to report an error in that case. So I'll have to use a different construct than this while loop
 while [ ! $# -eq 0 ]
 do
@@ -385,8 +500,10 @@ do
 			#Check whether $2 is actually a valid directory
 			if [ -d "$2" ]
 			then
-				setx NOTES_DIR "$2"
-				#export NOTES_DIR="$2"
+				createEnvironmentVariable "$createEnvironmentVariableCommandName" "NOTES_DIR" "$2"
+				# setx NOTES_DIR "$2"
+				# necessary since setting an environment variable this way doesn't take effect until restarting shell (?)
+				export NOTES_DIR="$2"
 				shift 2
 			else
 				echo "$2 is not a directory!"
