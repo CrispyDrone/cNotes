@@ -49,11 +49,11 @@ notes man
 ```
 This will print the help page.
 ```
-notes [-i DIRECTORY] [-r] all
+notes [-i DIRECTORY] [-r] [-x] all
 ```
 Compiles all notes from the $NOTES_DIR directory.
 ```
-notes [-i DIRECTORY] [-r] (SUB)DIRECTORY [[,...n] | [...n] [int [[,...n] | [-int]]]]
+notes [-i DIRECTORY] [-r] [-x] (SUB)DIRECTORY [[,...n] | [...n] [int [[,...n] | [-int]]]]
 ```
 Compiles all notes from the (SUB)DIRECTORY contained in $NOTES_DIR. Multiple directories can be included by separating them with a comma, or the compilation can be excluded to an other subdirectory level by providing additional subdirectories in a space separated list. An optional integer, integer list, or integer range can also be supplied in this latter case to limit the compilation to those folders ending in an integer that's included in the supplied collection.
 
@@ -63,12 +63,14 @@ Compiles all notes from the (SUB)DIRECTORY contained in $NOTES_DIR. Multiple dir
 		Sets the $NOTES_DIR environment variable.
 	-r
 		Root only, only generate master pdf.
+	-x
+		Ignore any instructions inside all Customize folders in the hierarchy.
 	[]
-		Optional argument
+		Optional argument.
 	[,...n]
-		Optional comma separated values
+		Optional comma separated values.
 	[...]
-		Optional space separated values
+		Optional space separated values.
 	|
 		OR, used to specify mutually exclusive items.
 
@@ -78,6 +80,7 @@ This script operates on a folder hierarchy with a single root folder in which yo
 
 ```
 Notes
+├─Customize
 ├─Personal
 │  ├─Diary
 │  │  └─2018
@@ -99,10 +102,12 @@ Notes
 │  └─Mathematics
 └─Work
     └─Projects
-	├─Project1
-	├─Project2
-	├─Project3
-	└─Project4
+        ├─Project1
+        ├─Project2
+        ├─Project3
+        ├─Project4
+        ├─Project5
+        └─Project6
 ```
 
 If we want to compile all notes in our Notes folder, we can execute the following command:
@@ -127,11 +132,18 @@ notes Work Projects 1-4
 ```
 This will then generate a Projects.pdf file inside the Work folder.
 
+You can now add a Customize folder at any level of the hierarchy. This folder can contain a header.tex file with additional commands to be added to the latex preamble. For now I have only tested changing the font. Most likely support for templates will have to be added for it to work properly. You can now change the font to for example merriweather by including the following lines in the header.tex file:
+```
+\usepackage[sfdefault]{merriweather}
+\fontfamily{merriweather}
+```
+The instructions in the Customize folder closest to the to-be-compiled directory will be used, this means that it will also search the parent directory all the way to the root $NOTES_DIR. If no Customize folder is found, default values will be used.
+
 ## Known Bugs
 
-+ Currently an extra master pdf will be generated in case you do not supply an integer list with a specific path.
-+ Paths are formed with both '\' and '/' which looks ugly but somehow seems to work.
-+ Currently only works on windows since the gs64winc command is a windows specific command
++ ~~Currently an extra master pdf will be generated in case you do not supply an integer list with a specific path.~~ (Not a bug, you can provide -r flag to prevent the creation of the master pdf)
++ Paths are formed with both '\\' and '/' which looks ugly but somehow seems to work.
++ ~~Currently only works on windows since the gs64winc command is a windows specific command~~ (Should work now!)
 
 In case you find any bugs, feel free to let me know.
 
@@ -140,7 +152,7 @@ In case you find any bugs, feel free to let me know.
 + Support for suffixes of the folders currently ending in integers. This will be useful in case you want your folders to have names like "Project 1 - ProjectTitle" instead of just "Project1".
 + Support for piping of output from commands such as grep to notes, so you can more easily determine which notes you want to compile to a pdf format.
 + Support for other output formats such as .docx, and html.
-+ Support for output customization (see fonts, latex engines,...)
++ Support for output customization (~~see fonts,~~ latex engines,...)
 + More appropriate naming of "master.pdf"
 + Support for an absolute path besides a space separated list of directories.
 + Improvement of script logic, performance, less dependencies,... (whatever is possible!)

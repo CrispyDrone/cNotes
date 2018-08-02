@@ -22,7 +22,7 @@ man() {
 	cat << EOF
 Introduction:
 
-	This script is used to compile notes from certain subdirectories in a general "NOTES" containing directory, or optionally notes can be piped through from a "grep-like" command such as vimgrep. The script compiles markdown files into one pdf file with a table of contents for quick navigation. The main directory is an environment variable called $NOTES_DIR and can be set manually or supplied to the script through an optional flag "-i DIRECTORY" (warning: this will create an environment variable!). A pdf is created in each final directory ("the leaves") unless this is turned off through the -r flag, and one combination pdf ("the root") at the main directory ($NOTES_DIR in case of "all").
+	This script is used to compile notes from certain subdirectories in a general "NOTES" containing directory, or optionally notes can be piped through from a "grep-like" command such as vimgrep. The script compiles markdown files into one pdf file with a table of contents for quick navigation. The main directory is an environment variable called $NOTES_DIR and can be set manually or supplied to the script through an optional flag "-i DIRECTORY" (warning: this will create an environment variable!). A pdf is created in each final directory ("the leaves") unless this is turned off through the -r flag, and one combination pdf ("the root") at the main directory ($NOTES_DIR in case of "all"). You can create additional folders containing extra instructions at any level of the hierarchy. When specifying a directory to compile notes from, the specified directory will be searched for a "Customize" folder containing the instructions. If no such folder is found, the parent directory is searched all the way till the root $NOTES_DIR. If no folder is found, default values are used. You can opt to ignore all extra instructions by providing the -x flag.
 
 Commands:
 
@@ -52,6 +52,10 @@ Syntax:
 
 		Root only, only generate master pdf.
 
+	-x
+
+		Ignore any files found in any "Customize" folder along the hierarchy.
+
 EOF
 }
 
@@ -64,9 +68,53 @@ getnotes() {
 		done
 }
 
+runPandoc() {
+	# has length 0 ?
+	oldIfs=$IFS
+	IFS=$'\n'
+	if [ -z "$3" ]
+	then
+		pandoc -f markdown -t latex --toc -o "${1}.pdf" $2 && echo "Created ${1}.pdf"
+	else
+		headerFile=$(echo "$3" | sed 's/-H \(.*$\)/\1/')
+		# DEBUG: echo "$headerFile"
+		# only if headerFile is NOT empty!!
+		if [ ! -z "$headerFile" ]
+		then
+			pandoc -f markdown -t latex --toc -H "$headerFile" -o "${1}.pdf" $2 && echo "Created ${1}.pdf"
+		else
+			pandoc -f markdown -t latex --toc -o "${1}.pdf" $2 && echo "Created ${1}.pdf"
+		fi
+	fi
+	IFS="$oldIfs"
+}
+
 # compiles a pdf from markdown to latex, with table of contents and provided font (not yet supported)
+# $1 = file name, $2 = notes, $3 = custom settings directory 
 makepdf() {
-	pandoc -f markdown -t latex --toc -o "${1}.pdf" $2 && echo "Created ${1}.pdf"
+	# if $3 is defined and is a directory
+	if [ ! -z "$3" ] && [ -d "$3" ]
+	then
+		# does bash have block level scoping? I think not, so you can define variables inside if blocks and use them outside of it?? Yeah I think so, it will just return an empty string if it's not defined
+		customArguments=$(getCustomizationCommands "$3")
+	fi
+
+	# pandoc -f markdown -t latex --toc -o "${1}.pdf" $2 && echo "Created ${1}.pdf"
+	# Maybe you should create a "Pandoc" function similar to ghostscript gs
+	# This shouldn't give any issues if customArguments is empty right? It seems it does give issues... Make pandoc function!
+	runPandoc "$1" "$2" "$customArguments"
+	# pandoc -f markdown -t latex --toc -o "${1}.pdf" $2 && echo "Created ${1}.pdf" # "$customArguments"
+}
+
+# header commands will be present in a file called header (for example which font to use)
+getCustomizationCommands() {
+	cd "$1"
+	if [ -e "header.tex" ]
+	then
+		echo "-H $PWD/header.tex"
+	fi
+
+	# other customization commands will also be echoed!!
 }
 
 # ghostscript can combine pdfs
@@ -90,10 +138,27 @@ gs() {
 	esac
 }
 
+# Finds the "Customization" directory in the current directory, if there's no such directory, it will continue looking all the way up until the root. If no directory is found, it echoes an emtpy string
+getCustomizationDirectory() {
+	originalDirectory="$PWD"
+	while [ "$PWD" != "$NOTES_DIR" ]
+	do
+		if [ -d "Customize" ]
+		then
+			echo "$PWD""/Customize"
+			break
+		else
+			cd ..
+		fi
+	done
+	cd "$originalDirectory"
+}
+
 # takes *, path and int list, or directory list
 # output all directories that contained notes
 makenotes() {
 	isNotEmptyRegex="[[:alnum:]]"
+	customizationDirectory=""
 	if [ "$1" = '*' ]
 	then
 		cd $NOTES_DIR &>/dev/null
@@ -105,6 +170,15 @@ makenotes() {
 				cd $folder &>/dev/null
 				# how to write a proper regex?? I need to match as soon as there's a single character different from a space, tab, newline (line feed/carriage return),... basically if ntoes is note EMPTY!
 				notes=$(getnotes)
+
+				# GET CUSTOMIZATION FOLDER
+
+				# I could add the -x flag logic here? or inside the makepdf function, this one should be slightly more performant? Should give no issues for calling makepdf, customizationDirectory should be an empty string??
+				if [ "$ignoreCustomizationInstructions" = false ]
+				then
+					customizationDirectory=$(getCustomizationDirectory)
+				fi
+
 				# if [ $? -eq 0 ] # would have to change find return code...
 				if [[ "$notes" =~ $isNotEmptyRegex ]]
 				then
@@ -112,7 +186,7 @@ makenotes() {
 					output_file=$(basename "$folder")
 					oldIfs=$IFS
 					IFS=$'\n'
-					makepdf "$output_file" "$notes"
+					makepdf "$output_file" "$notes" "$customizationDirectory"
 					IFS=$oldIfs
 					compiledFiles+=("$folder/${output_file}.pdf")
 					unset notes output_file oldIfs
@@ -170,12 +244,22 @@ makenotes() {
 			esac
 			# get notes and make pdf
 			notes=$(getnotes)
+
+
+			# ? GET CUSTOMIZATION FOLDER
+
+			if [ "$ignoreCustomizationInstructions" = false ]
+			then
+				customizationDirectory=$(getCustomizationDirectory)
+			fi
+
+
 			# if [ $? -eq 0 ] # would have to change find return code...
 			if [[ "$notes" =~ $isNotEmptyRegex ]]
 			then
 				oldfIfs=$IFS
 				IFS=$'\n'
-				makepdf "$output_file" "$notes"
+				makepdf "$output_file" "$notes" "$customizationDirectory"
 				IFS=$oldIfs
 				compiledFiles+=("${output_file}.pdf")
 				unset notes output_file oldIfs
@@ -409,6 +493,7 @@ main() {
 	esac
 	
 	# if -r cleanup directories
+	# honestly, this doesn't need to be passed as an argument, since you can just access the environment variable straight away right???
 	if [ "$1" = "true" ]
 	then
 		echo "Cleaning up directories..." && cleanDirectories "${compiledFiles[@]}"
@@ -419,6 +504,7 @@ main() {
 # variables list
 # Only generate master pdf = false
 rootOnly=false
+ignoreCustomizationInstructions=false
 directories=()
 integers=()
 compiledFiles=()
@@ -431,13 +517,13 @@ gsname=""
 createEnvironmentVariableCommandName=""
 case "$OSTYPE" in
 	darwin*)
-		echo "I am a mac"
+		# DEBUG: echo "I am a mac"
 		# gs+=("gs")
 		gsname="gs"
 		createEnvironmentVariableCommandName="export"
 		;;
 	linux-gnu)
-		echo "I am a linux or windows 10"
+		# DEBUG: echo "I am a linux or windows 10"
 		if [[ "$(grep -qi Microsoft /proc/sys/kernel/osrelease 2> /dev/null)" =~ *Microsoft* ]]
 		then
 			if [ "$(uname -a)" == 'x86_64' ]
@@ -456,7 +542,7 @@ case "$OSTYPE" in
 		fi
 		;;
 	cygwin)
-		echo "I am windows using cygwin"
+		# DEBUG: echo "I am windows using cygwin"
 		if [[ "$(uname -a)" =~ x86_64 ]]
 		then
 			# gs+=("gswin64c")
@@ -468,7 +554,7 @@ case "$OSTYPE" in
 		createEnvironmentVariableCommandName="setx"
 		;;
 	msys)
-		echo "I am windows using minimal shell"
+		# DEBUG: echo "I am windows using minimal shell"
 		if [[ "$(uname -a)" =~ x86_64 ]]
 		then
 			# gs+=("gswin64c")
@@ -480,7 +566,7 @@ case "$OSTYPE" in
 		createEnvironmentVariableCommandName="setx"
 		;;
 	*)
-		echo "I am something else..."
+		# DEBUG: echo "I am something else..."
 		# try
 		# gs+=("gs")
 		gsname="gs"
@@ -513,6 +599,11 @@ do
 		-r)
 			# Only generate master pdf = true
 			rootOnly=true
+			shift
+			;;
+		-x)
+			# Ignore customization instructions
+			ignoreCustomizationInstructions=true
 			shift
 			;;
 		all)
